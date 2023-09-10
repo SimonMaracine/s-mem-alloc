@@ -10,6 +10,8 @@ mod tests {
     fn it_works() {
         let mut naive_allocator = NaiveAllocator::new(1024);
 
-        let _addr = naive_allocator.malloc(128);
+        let addr = naive_allocator.malloc(250);
+
+        assert!(addr.unwrap() != std::ptr::null_mut());
     }
 }

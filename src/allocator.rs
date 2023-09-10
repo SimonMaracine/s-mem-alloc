@@ -1,7 +1,7 @@
 use std::alloc::{alloc, dealloc, Layout};
 
 pub (crate) trait Alloc {
-    fn malloc(&mut self, bytes: usize) -> Option<*mut i8>;
+    fn malloc(&mut self, bytes: usize) -> Option<*mut u8>;
     fn free(&mut self, address: *mut u8);
 }
 

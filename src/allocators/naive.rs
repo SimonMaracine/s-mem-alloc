@@ -4,7 +4,8 @@ use crate::allocator::{Mem, Alloc};
 
 pub struct NaiveAllocator {
     memory: Mem,
-    free_list: LinkedList<FreeBlock>,
+    free_list: LinkedList<Block>,
+    alloc_list : LinkedList<Block>,
 }
 
 impl NaiveAllocator {
@@ -12,38 +13,67 @@ impl NaiveAllocator {
         let memory = Mem::new(bytes);
 
         let mut list = LinkedList::new();
-        list.push_back(FreeBlock { address: memory.data, size: bytes });
+        list.push_back(Block { address: memory.data, size: bytes });
 
         Self {
             memory,
             free_list: list,
+            alloc_list: LinkedList::new(),
         }
     }
 
-    fn allocate_block_full(&mut self) {
+    fn allocate_in_block(&mut self, bytes: usize, index: usize) -> *mut u8 {
+        let mut free_list_after_index = self.free_list.split_off(index);
 
+        let old_block_address = if free_list_after_index.front().unwrap().size - bytes > 0 {
+            let old_block = free_list_after_index.front_mut().unwrap();
+
+            unsafe { old_block.address = old_block.address.add(bytes); }
+            old_block.size -= bytes;
+
+            old_block.address
+        } else {
+            free_list_after_index.pop_front().unwrap().address
+        };
+
+        let new_block = Block {
+            address: old_block_address,
+            size: bytes,
+        };
+
+        self.alloc_list.push_back(new_block);
+
+        self.free_list.append(&mut free_list_after_index);
+
+        old_block_address
     }
 
-    fn allocate_block_partial(&mut self) {
-        
+    fn search_free_block(&self, bytes: usize) -> Option<usize> {
+        for (i, block) in self.free_list.iter().enumerate() {
+            if block.size >= bytes {
+                return Some(i);
+            }
+        }
+
+        None
     }
 }
 
 impl Alloc for NaiveAllocator {
-    fn malloc(&mut self, bytes: usize) -> Option<*mut i8> {
+    fn malloc(&mut self, bytes: usize) -> Option<*mut u8> {
         if bytes == 0 {
             return None;
         }
 
-        for list in &self.free_list {
-            if list.size > bytes {
-                self.allocate_block_partial();
-            } else if list.size == bytes {
-                self.allocate_block_full();
-            }
+        let index = self.search_free_block(bytes);
+
+        if let Some(index) = index {
+            let address = self.allocate_in_block(bytes, index);
+
+            return Some(address);
         }
 
-        Some(ptr::null_mut())
+        None
     }
 
     fn free(&mut self, address: *mut u8) {
@@ -51,12 +81,13 @@ impl Alloc for NaiveAllocator {
             return;
         }
 
+        for block in &self.alloc_list {
 
-
+        }
     }
 }
 
-struct FreeBlock {
+struct Block {
     address: *mut u8,
     size: usize,
 }

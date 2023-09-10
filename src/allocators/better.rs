@@ -22,7 +22,7 @@ impl BetterAllocator {
 }
 
 impl Alloc for BetterAllocator {
-    fn malloc(&mut self, bytes: usize) -> Option<*mut i8> {
+    fn malloc(&mut self, bytes: usize) -> Option<*mut u8> {
         if bytes == 0 {
             return None;
         }
